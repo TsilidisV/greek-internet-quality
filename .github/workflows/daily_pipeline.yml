@@ -2,7 +2,6 @@ name: Daily Pipeline
 
 on:
   schedule:
-    # Every day at 05:12 UTC 
     - cron: '12 05 * * *'
   workflow_dispatch:
 
@@ -12,35 +11,37 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
-      # 1. Authenticate with GCP FIRST
+
+      # MOVED UP: Authenticate first so Terraform can access the remote state backend
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.INGESTOR_GCP_KEY }}
 
-      # 2. Set up the gcloud CLI (Optional here, but good practice right after auth)
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      # 3. Now Setup and run Terraform
       - uses: hashicorp/setup-terraform@v3
 
+      # Initialize Terraform (now has access to GCS backend via auth)
       - name: Terraform Init
         run: |
           cd infrastructure
           terraform init
 
+      # Read outputs (now has access to state)
       - name: Get Terraform Outputs
         id: tf-outputs
         run: |
           cd infrastructure
+          # Using -raw ensures strict output, but if the value is empty or missing,
+          # it still might cause issues. Ensure these outputs exist in your tf files.
           echo "GCS_BUCKET=$(terraform output -raw GCS_BUCKET)" >> $GITHUB_ENV
           echo "GOOGLE_CLOUD_PROJECT=$(terraform output -raw GOOGLE_CLOUD_PROJECT)" >> $GITHUB_ENV
           echo "GCP_REGION=$(terraform output -raw GCP_REGION)" >> $GITHUB_ENV
           echo "CLOUD_RUN_JOB_NAME=$(terraform output -raw CLOUD_RUN_JOB_NAME)" >> $GITHUB_ENV
 
-      # 4. Continue with your app logic
+      # 2. Set up the gcloud CLI (auth is already done, but this sets up the CLI tool)
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         
@@ -50,7 +51,6 @@ jobs:
       - name: Ingest Data
         run: uv run --directory ingest main.py daily
 
-      # 5. Trigger the Cloud Run Job
       - name: Trigger ETL Cloud Run Job
         run: |
           gcloud run jobs execute ${{ env.CLOUD_RUN_JOB_NAME }} \
