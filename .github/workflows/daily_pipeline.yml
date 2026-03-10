@@ -26,6 +26,11 @@ jobs:
           cd infrastructure
           terraform init
 
+      - name: Debug Terraform State
+        run: |
+          cd infrastructure
+          terraform output
+          
       # Read outputs (now has access to state)
       - name: Get Terraform Outputs
         id: tf-outputs
