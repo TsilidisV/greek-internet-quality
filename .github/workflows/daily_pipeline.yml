@@ -17,12 +17,15 @@ jobs:
 
       # Initialize Terraform (requires backend configuration in your tf files)
       - name: Terraform Init
-        run: terraform init
+        run: |
+          cd infrastructure
+          terraform init
 
       # Read the outputs and save them to the GitHub Environment ($GITHUB_ENV)
       - name: Get Terraform Outputs
         id: tf-outputs
         run: |
+          cd infrastructure
           echo "GCS_BUCKET=$(terraform output -raw GCS_BUCKET)" >> $GITHUB_ENV
           echo "GOOGLE_CLOUD_PROJECT=$(terraform output -raw GOOGLE_CLOUD_PROJECT)" >> $GITHUB_ENV
           echo "GCP_REGION=$(terraform output -raw GCP_REGION)" >> $GITHUB_ENV
