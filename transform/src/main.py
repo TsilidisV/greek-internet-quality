@@ -19,7 +19,7 @@ def main():
         # ---------------------------------------------------------
         # 1. READ BRONZE
         # ---------------------------------------------------------
-        input_path = f"gs://{Config.GCS_BUCKET}/hyperion/year=2023/"
+        input_path = f"gs://{Config.GCS_BUCKET}/hyperion/"
         bronze_df = spark.read.option("mergeSchema", "true").parquet(input_path)
 
         # ---------------------------------------------------------

@@ -9,7 +9,7 @@ variable "project_id" {
 variable "region" {
   description = "The GCP region for resources (Must be us-central1, us-west1, or us-east1 for Free Tier GCS)"
   type        = string
-  default     = "us-central1"
+  default     = "us-east1"
 }
 
 # github actions
