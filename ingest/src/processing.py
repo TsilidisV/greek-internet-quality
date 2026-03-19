@@ -33,7 +33,8 @@ def get_schema() -> pa.schema:
         ('connection_regional_unit_id', pa.string()),
         ('connection_regional_unit', pa.string()),
         ('connection_periphery_id', pa.string()),
-        ('connection_periphery', pa.string())
+        ('connection_periphery', pa.string()),
+        ('ingested_at', pa.timestamp('us'))
     ])
 
 
