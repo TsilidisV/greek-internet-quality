@@ -17,7 +17,7 @@ output "INGESTOR_SA_EMAIL" {
 
 output "TRANSFORM_SA_EMAIL" {
   description = "The email of the Load and Transform Service Account"
-  value       = google_service_account.etl_sa.email
+  value       = google_service_account.transformer_sa.email
 }
 
 output "DASHBOARD_SA_EMAIL" {
@@ -31,4 +31,8 @@ output "CLOUD_RUN_JOB_NAME" {
 
 output "GCP_REGION" {
   value = var.region
+}
+
+output "DOCKER_IMAGE" {
+  value = var.docker_image
 }

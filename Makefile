@@ -59,7 +59,7 @@ create-ingestor-key:
 	@echo "   Env: $(INGESTOR_ENV_FILE)"
 	@echo "⚠️  REMINDER: Check your .gitignore!"
 
-create-transform-key:
+create-transformer-key:
 	@echo "📂 Ensuring secret directory exists..."
 	@mkdir -p $(TRANSFORM_SECRET_DIR_ABS)
 
@@ -91,14 +91,21 @@ create-dashboard-key:
 
 	@echo "🔍 Fetching configuration from Terraform..."
 	$(eval PROJECT_ID := $(shell terraform -chdir=$(INFRA_DIR) output -raw GOOGLE_CLOUD_PROJECT))
-	$(eval SA_EMAIL := $(shell terraform -chdir=$(INFRA_DIR) output -raw TRANSFORM_SA_EMAIL))
-	
+	$(eval SA_EMAIL := $(shell terraform -chdir=$(INFRA_DIR) output -raw DASHBOARD_SA_EMAIL))
+	$(eval BQ_DATASET := $(shell terraform -chdir=$(INFRA_DIR) output -raw BQ_DATASET))
+
 	@echo "🚀 Creating key for Service Account: $(SA_EMAIL)"
 	gcloud iam service-accounts keys create $(DASHBOARD_KEY_FILE) \
 		--iam-account=$(SA_EMAIL) \
 		--project=$(PROJECT_ID)
 
 	@python -c "import json; data = json.load(open('$(DASHBOARD_KEY_FILE)')); print('[gcp_service_account]'); [print(f'{k} = {json.dumps(v)}') for k, v in data.items()]" > $(DASHBOARD_TOML_FILE)
+	
+	@echo "" >> $(DASHBOARD_TOML_FILE)
+	@echo "[gcp_resources]" >> $(DASHBOARD_TOML_FILE)
+	@echo "project_id = \"$(PROJECT_ID)\"" >> $(DASHBOARD_TOML_FILE)
+	@echo "bq_dataset = \"$(BQ_DATASET)\"" >> $(DASHBOARD_TOML_FILE)
+	
 	@echo "✅ Successfully created $(SECRETS_FILE)!"
 
 docker-run:
@@ -106,10 +113,12 @@ docker-run:
 	docker compose up --build
 
 image-push:
-	cd ./transform && \
+	$(eval DOCKER_IMAGE := $(shell terraform -chdir=$(INFRA_DIR) output -raw DOCKER_IMAGE))
+
+	cd $(TRANSFORM_DIR) && \
 	docker login && \
-	docker build -t $(username)/spark-example5:latest . && \
-	docker push $(username)/spark-example5:latest 
+	docker build -t $(DOCKER_IMAGE) . && \
+	docker push $(DOCKER_IMAGE) 
 
 
 

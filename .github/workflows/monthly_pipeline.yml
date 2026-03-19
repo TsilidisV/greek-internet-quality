@@ -2,28 +2,33 @@ name: Daily Pipeline
 
 on:
   schedule:
-    # Every day at 05:12 UTC 
-    - cron: '12 05 * * *'
+    # At 04:14 UTC, on day 1 of the month 
+    - cron: '14 4 1 * *'
   workflow_dispatch:
+
+# This is required for Workload Identity Federation to work.
+permissions:
+  contents: 'read'
+  id-token: 'write'
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
     env:
       GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
-      # It's good practice to set these as env vars
-      GCP_PROJECT_ID:  ${{ secrets.GCP_PROJECT_ID }} # Replace or use secrets
-      GCP_REGION:  ${{ secrets.GCP_REGION }}         # Replace or use secrets
-      JOB_NAME:  ${{ secrets.JOB_NAME }}             # Replace with var.job_name value
+      GCP_PROJECT_ID:  ${{ secrets.GCP_PROJECT_ID }}
+      GCP_REGION:      ${{ secrets.GCP_REGION }}
+      JOB_NAME:        ${{ secrets.JOB_NAME }}
 
     steps:
       - uses: actions/checkout@v4
       
-      # 1. Authenticate with GCP
+      # 1. Authenticate with GCP using Workload Identity Federation
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.INGESTOR_GCP_KEY }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       # 2. Set up the gcloud CLI
       - name: Set up Google Cloud SDK
@@ -36,7 +41,9 @@ jobs:
         run: uv --directory ingest sync --frozen
         
       - name: Ingest Data
-        run: uv run --directory ingest main.py daily
+        # Because we authenticated above, Python's Google Cloud libraries 
+        # automatically pick up the credentials via Application Default Credentials (ADC).
+        run: uv run --directory ingest python -m src.main monthly
 
       # 3. Trigger the Cloud Run Job
       - name: Trigger ETL Cloud Run Job

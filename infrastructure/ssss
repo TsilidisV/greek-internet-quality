@@ -1,0 +1,2 @@
+# secrets.auto.tfvars
+github_token = "your_github_pat_token"

@@ -28,4 +28,4 @@ RUN uv sync --frozen
 COPY src/ .
 
 # 9. Run the ETL job
-CMD ["uv", "run", "medallion.py"]
+CMD ["uv", "run", "main.py"]
