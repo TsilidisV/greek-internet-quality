@@ -1,4 +1,4 @@
-name: Daily Pipeline
+name: Monthly Pipeline
 
 on:
   schedule:
