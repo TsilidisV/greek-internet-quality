@@ -21,7 +21,7 @@ jobs:
         run: curl -fsSL https://d2lang.com/install.sh | sh -s --
 
       - name: Render Diagram
-        run: d2 docs/architecture.d2 docs/architecture.svg
+        run: d2 --theme=200 --layout=elk docs/architecture.d2 docs/architecture.svg
 
       # Commits the new SVG back to your repo
       - name: Commit changes
