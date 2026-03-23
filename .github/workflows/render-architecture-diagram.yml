@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - 'architecture.d2' # Only run when the D2 file changes
-
+  workflow_dispatch:
+  
 jobs:
   build:
     runs-on: ubuntu-latest
