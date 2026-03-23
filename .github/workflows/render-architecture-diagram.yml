@@ -3,25 +3,30 @@ name: Generate D2 Diagram
 on:
   push:
     paths:
-      - 'architecture.d2' # Only run when the D2 file changes
-  workflow_dispatch:
-  
+      # Assuming we went with the recommended /docs folder approach!
+      - 'docs/architecture.d2' 
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # CRITICAL: Required for the bot to commit the SVG back to your repo
+    permissions:
+      contents: write 
+      
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      # Uses the official Terrastruct Action to install D2
+      # FIXED: Download and install the binary directly from D2
       - name: Install D2
-        uses: terrastruct/setup-d2@main
+        run: curl -fsSL https://d2lang.com/install.sh | sh -s --
 
       - name: Render Diagram
         run: d2 docs/architecture.d2 docs/architecture.svg
 
       # Commits the new SVG back to your repo
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs: Auto-update architecture diagram"
-          file_pattern: "*.svg"
+          file_pattern: "docs/*.svg"
