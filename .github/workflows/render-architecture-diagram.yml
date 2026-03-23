@@ -3,7 +3,6 @@ name: Generate D2 Diagram
 on:
   push:
     paths:
-      # Assuming we went with the recommended /docs folder approach!
       - 'docs/architecture.d2' 
 
 jobs:
