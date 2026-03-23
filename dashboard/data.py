@@ -1,6 +1,7 @@
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
+import pandas as pd
 
 project_id = st.secrets["gcp_resources"]["project_id"]
 bq_dataset = st.secrets["gcp_resources"]["bq_dataset"]
@@ -28,22 +29,11 @@ def get_regional_metrics():
     #rows = query_job.result()  # Waits for query to finish
 #
     #return pl.from_arrow(rows.to_arrow())
+    df_region = client.query(query).to_dataframe()
 
-    return client.query(query).to_dataframe()
-
-@st.cache_data(ttl=3600)
-def get_sessionization():
-    client = get_connection()
-
-    query = f"""
-        SELECT
-            total_tests_in_session,
-            time_since_last_session_seconds
-        FROM `{project_id}.{bq_dataset}.gold_sessionization`
-    """
-    return client.query(query).to_dataframe()
-
-
+    df_region["measurement_date"] = pd.to_datetime(df_region["measurement_date"])
+    df_region = df_region.sort_values("measurement_date")
+    return df_region
 
 @st.cache_data(ttl=3600)
 def get_silver():
@@ -57,3 +47,34 @@ def get_silver():
         FROM `{project_id}.{bq_dataset}.silver_measurements`
     """
     return client.query(query).to_dataframe()
+
+@st.cache_data(ttl=3600)
+def get_user_retention():
+    client = get_connection()
+
+    query = f"""
+        SELECT
+            session_date,
+            user_type,
+            total_sessions
+        FROM `{project_id}.{bq_dataset}.gold_user_retention`
+    """
+    df = client.query(query).to_dataframe()
+    df["session_date"] = pd.to_datetime(df["session_date"])
+
+    return df
+
+@st.cache_data(ttl=3600)
+def get_frustration_staircase():
+    client = get_connection()
+
+    query = f"""
+        SELECT
+            *
+        FROM `{project_id}.{bq_dataset}.gold_frustration_staircase`
+    """
+
+    df = client.query(query).to_dataframe()
+    df["session_date"] = pd.to_datetime(df["session_date"])
+
+    return df

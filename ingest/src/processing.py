@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def get_schema() -> pa.schema:
     """Defines the output schema."""
     return pa.schema([
-        ('measurement_time', pa.timestamp('us')),
+        ('measurement_time', pa.timestamp('us', tz='Europe/Athens')),
         ('connection_id', pa.string()), 
         ('client_ip', pa.string()),
         ('measurement_id', pa.int64()),
@@ -34,7 +34,7 @@ def get_schema() -> pa.schema:
         ('connection_regional_unit', pa.string()),
         ('connection_periphery_id', pa.string()),
         ('connection_periphery', pa.string()),
-        ('ingested_at', pa.timestamp('us'))
+        ('ingested_at', pa.timestamp('us', tz='UTC'))
     ])
 
 

@@ -1,0 +1,26 @@
+name: Generate D2 Diagram
+
+on:
+  push:
+    paths:
+      - 'architecture.d2' # Only run when the D2 file changes
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Uses the official Terrastruct Action to install D2
+      - name: Install D2
+        uses: terrastruct/setup-d2@main
+
+      - name: Render Diagram
+        run: d2 docs/architecture.d2 docs/architecture.svg
+
+      # Commits the new SVG back to your repo
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "docs: Auto-update architecture diagram"
+          file_pattern: "*.svg"

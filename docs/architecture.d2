@@ -1,0 +1,91 @@
+# Themes: 'terrastruct' (default), 'grape', 'terminal', 'cool'
+
+vars: {
+  # Themes live right here in the root of vars!
+  d2-theme: cool       # Used for Light Mode viewers
+  d2-theme-dark: 200   # Used automatically for Dark Mode viewers
+
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
+# --- COMPONENTS ---
+API: { shape: cylinder; icon: https://api.iconify.design/logos/json.svg }
+
+DockerHub: {
+  icon: https://api.iconify.design/logos/docker-icon.svg
+  SparkImage: Spark Job { icon: https://api.iconify.design/logos/apache-spark.svg }
+}
+
+Terraform: { icon: https://api.iconify.design/logos/terraform-icon.svg }
+
+GitHub: {
+  icon: https://api.iconify.design/logos/github-icon.svg
+  Actions: Monthly Schedule { shape: hexagon; icon: https://api.iconify.design/logos/github-actions.svg }
+  Ingestor: Python Script { icon: https://api.iconify.design/logos/python.svg }
+  # The artificial Trigger node has been removed!
+}
+
+GCP: Google Cloud Platform {
+  icon: https://api.iconify.design/logos/google-cloud-platform.svg
+
+  GCS: Google Cloud Storage {
+     A: Bronze Data{
+     shape: cylinder;
+     }
+     icon: https://cdn.simpleicons.org/googlecloudstorage/AECBFA
+    }
+  CloudRun: Cloud Run Job { icon: https://api.iconify.design/logos/google-cloud-run.svg }
+
+  BigQuery: Medallion {
+    icon: https://cdn.simpleicons.org/googlebigquery/669DF6
+
+    Silver: {
+      grid-columns: 1
+      measurements: measurements { shape: parallelogram }
+      user_sessions: user_sessions { shape: parallelogram }
+    }
+
+    Gold: {
+      grid-columns: 1
+      regional: regional_metrics { shape: parallelogram }
+      retention: user_retention { shape: parallelogram }
+      frustration: frustration_staircase { shape: parallelogram }
+    }
+  }
+}
+
+Streamlit: { icon: https://api.iconify.design/logos/streamlit.svg }
+
+# --- CLASSES ---
+classes: {
+  iac: { style: { stroke-dash: 3; stroke: "#8a2be2" } }
+}
+
+# --- CONNECTIONS ---
+
+# 0. Provisioning (Simplified)
+Terraform -> GitHub: Configures { class: iac }
+Terraform -> GCP: Provisions { class: iac }
+
+# 1. Orchestration & Ingestion
+API -> GitHub.Ingestor: Fetch Data
+GitHub.Actions -> GitHub.Ingestor: 1. Trigger Ingestion
+GitHub.Ingestor -> GCP.GCS.A: Write
+
+# 2. Compute (Direct trigger from Actions to Cloud Run)
+GitHub.Actions -> GCP.CloudRun: 2. Trigger Transform (On Success)
+GCP.CloudRun -> DockerHub.SparkImage: Pulls Image { style: { stroke-dash: 5; stroke: "#2496ED"; stroke-width: 2 } }
+GCP.CloudRun -> GCP.GCS.A: Read Bronze
+
+# 3. Medallion Transformations
+GCP.GCS.A -> GCP.BigQuery.Silver.measurements
+GCP.BigQuery.Silver.measurements -> GCP.BigQuery.Silver.user_sessions
+
+GCP.BigQuery.Silver.measurements -> GCP.BigQuery.Gold.regional
+GCP.BigQuery.Silver.user_sessions -> GCP.BigQuery.Gold.retention
+GCP.BigQuery.Silver.user_sessions -> GCP.BigQuery.Gold.frustration
+
+# 4. Presentation
+GCP.BigQuery.Gold -> Streamlit: Queries Data

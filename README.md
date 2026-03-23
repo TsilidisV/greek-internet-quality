@@ -1,10 +1,13 @@
 ## Getting Started
 
 ### Prerequisites
-- [Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk)
 - [Terraform](https://developer.hashicorp.com/terraform/install)
 - [Make](https://www.gnu.org/software/make/)
-- Create a github repo and make a fine-grained personal access token with a Secrets permission (read and write) for your specific repo. Then, run:
+- [uv](https://docs.astral.sh/uv/)
+- [Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk)
+- A [GCP](https://console.cloud.google.com/) account with a project.
+- Forking and/or downloading this repo.
+- A Github account with a Github repo and a fine-grained personal access token with a Secrets permission (read and write) for your specific repo. Then, run:
     ```bash
     cd infrastructure 
     cp secrets.auto.tfvars.example secrets.auto.tfvars
@@ -12,16 +15,15 @@
     ```
     and add your github token to the `secrets.auto.tfvars` file.
 
-#### Local
-- uv / python
+All commands need to be executed in Bash. If you're on Windows, [git bash](https://git-scm.com/install/) is recommended.
 
 ### Infrastructure
-Edit `infrastructure/variables.tf` with your desired project ID (theproject needs to already exist), bucket name, dataset name, etc.
+Edit `infrastructure/variables.tf` with your desired project ID (the project needs to already exist), bucket name, dataset name, etc.
 
 ```bash
 make infra-up
 ```
-Logs you in to gcloud cli and build infrastructure by creating a service account for uploading data to the lake, a service account for reading the lake and writing to BigQuery, a GCP bucket, a BigQuery dataset, and a Google Cloud Run Job.
+Logs you in to Google Cloud CLI and builds the infrastructure.
 
 You might get the error: "Error waiting for Creating Job: Error code 5, message: Image 'mirror.gcr.io/<your_docker_image>' not found.", but don't worry, since we haven't pushed the image to dockerhub yet. Nevertheless, the job has been created.
 
@@ -31,7 +33,7 @@ You might get the error: "Error waiting for Creating Job: Error code 5, message:
 ```bash
 make create-ingestor-key
 ```
-downloads service account key for ingest with writing to bucket permissions and creates a `.env` file with INGESTOR_GCP_KEY and GCS_BUCKET_NAME which are read in python.
+downloads service account key for data ingestion with writing to bucket permissions and creates a `.env` file with INGESTOR_GCP_KEY and GCS_BUCKET_NAME which are read in python.
 
 ```python
 uv run --directory ingest python -m src.main monthly
@@ -44,7 +46,7 @@ uploads files to the GCS bucket.
 
 #### Online
 
-To have automated ingestion through github actions add an `INGESTOR_GCP_KEY` and a `GCS_BUCKET_NAME` secret to your forked github repository, with the contents of the `transform-gcp-key.json` and your chosen name of the GCS bucket, respectively.
+Github Actions automatically connects to GCP and ingest the data of the previous month every 1st day of each month at 04:14 UTC.
 
 ### Transform
 #### Local
@@ -81,3 +83,5 @@ Then, the dashboard opens, by running
 ```bash
 uv run --directory dashboard streamlit run app.py
 ```
+
+![GCP Medallion Architecture](./docs/architecture.svg)

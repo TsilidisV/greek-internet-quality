@@ -1,3 +1,4 @@
+import pandas as pd
 import altair as alt
 alt.data_transformers.enable("vegafusion")
 
@@ -223,8 +224,8 @@ def get_marks(df):
             ),
         
         # Use Linear or Symlog for Loss (if many 0s, linear is fine)
-        y=alt.Y('avg_loss_percentage:Q', 
-                title='Loss %'),
+        y=alt.Y('avg_jitter_msec:Q', 
+                title='Jitter (msec)'),
         
         color=alt.Color(
             "connection_periphery:N", 
@@ -260,3 +261,208 @@ def get_marks(df):
     ).interactive()
 
     return chart
+
+def get_up_vs_down(df):
+    # 1. Interactive Selection
+    highlight = alt.selection_point(
+        fields=["connection_periphery"], 
+        bind="legend",
+        on="click",
+        empty=True 
+    )
+
+    # 2. Define interactive brush for zooming/panning
+    brush = alt.selection_interval(encodings=['x', 'y'])
+
+    # 3. Your Base Chart
+    scatter = alt.Chart(df).mark_circle().encode(
+        x=alt.X('avg_upstream_mbps:Q', 
+                title='Upstream (MB/s)', 
+                scale=alt.Scale(clamp=True)
+            ),
+        y=alt.Y('avg_downstream_mbps:Q', 
+                title='Downstream (MB/s)'),
+        color=alt.Color(
+            "connection_periphery:N", 
+            legend=alt.Legend(
+                title="Click to isolate periphery",
+                orient="bottom"
+            ),
+            scale=alt.Scale(scheme="tableau10"),
+        ),
+        tooltip=[
+            alt.Tooltip('avg_downstream_mbps:Q', title='Downstream (MB/s)'),
+            alt.Tooltip('avg_upstream_mbps:Q', title='Upstream (MB/s)'),
+            alt.Tooltip('connection_periphery:N', title='Periphery'),
+        ],
+        opacity=alt.condition(
+            highlight, 
+            alt.value(0.8), 
+            alt.value(0.05)   
+        ),
+        size=alt.condition(~highlight, alt.value(20), alt.value(40))
+    ).add_params(
+        highlight, 
+        brush
+    ).properties(
+        width=700,
+        height=400,
+        title="Network performance: Upstream vs Downstream" # Updated title
+    )
+
+    # 4. Create the x=y Reference Line
+    # Find the global max to know how far to draw the diagonal line
+    #max_val = max(df['avg_upstream_mbps'].max(), df['avg_downstream_mbps'].max())
+    max_val = 900
+
+    # Create a simple dataframe with start (0) and end (max_val) points
+    line_df = pd.DataFrame({'ref_val': [0, max_val]})
+    
+    # Plot the line mapping both X and Y to the same value
+    identity_line = alt.Chart(line_df).mark_line(
+        color='gray', 
+        strokeDash=[5, 5], # Makes the line dashed
+        opacity=0.7
+    ).encode(
+        x='ref_val:Q',
+        y='ref_val:Q'
+    )
+
+    # 5. Layer them together (scatter on top of the line)
+    # The .interactive() needs to go on the combined chart
+    final_chart = (scatter + identity_line).interactive()
+
+    return final_chart
+
+
+def get_altair_correlation_chart(df, columns=None):
+    """
+    Takes a pandas DataFrame and a list of numeric columns, 
+    and returns an Altair correlation heatmap chart.
+    """
+    # Auto-select numeric columns if none are explicitly provided
+    if columns is None:
+        columns = df.select_dtypes(include=['number']).columns.tolist()
+        # Drop meaningless identifier columns if present
+        if 'Unnamed: 0' in columns:
+            columns.remove('Unnamed: 0')
+            
+    # Step 1: Calculate the correlation matrix
+    corr_matrix = df[columns].corr().reset_index()
+    
+    # Step 2: Melt the dataframe into a long format required by Altair
+    corr_melted = corr_matrix.melt(
+        id_vars='index', 
+        var_name='Variable 2', 
+        value_name='Correlation'
+    )
+    corr_melted.rename(columns={'index': 'Variable 1'}, inplace=True)
+    
+    # Step 3: Create the base chart
+    base = alt.Chart(corr_melted).encode(
+        x=alt.X('Variable 1:O', title=''),
+        y=alt.Y('Variable 2:O', title='')
+    )
+    
+    # Step 4: Create the heatmap rectangles
+    rects = base.mark_rect().encode(
+        color=alt.Color(
+            'Correlation:Q', 
+            scale=alt.Scale(scheme='redblue', domain=[-1, 1]),
+            legend=alt.Legend(title="Pearson Corr")
+        )
+    )
+    
+    # Step 5: Add text annotations (the actual correlation values)
+    text = base.mark_text(baseline='middle', size=12).encode(
+        text=alt.Text('Correlation:Q', format='.2f'),
+        color=alt.condition(
+            # Use white text for dark backgrounds (high correlation) and black for light backgrounds
+            abs(alt.datum.Correlation) > 0.5,
+            alt.value('white'),
+            alt.value('black')
+        )
+    )
+    
+    # Step 6: Combine the layers and configure properties
+    chart = (rects + text).properties(
+        title='Correlation Matrix Heatmap',
+        width=500,
+        height=500
+    ).configure_axis(
+        labelFontSize=12,
+        titleFontSize=14,
+        labelAngle=-45  # Angle labels for readability
+    ).configure_title(
+        fontSize=18,
+        anchor='middle'
+    )
+    
+    return chart
+
+def get_staircase(df):
+
+    base = alt.Chart(df).encode(
+        x=alt.X('behavior_bucket:N', 
+                title='User Behavior (Test Count)',
+                axis=alt.Axis(labelAngle=0))
+    )
+
+    # 3. Create the Bar Chart for User Volume (Left Y-Axis)
+    bars = base.mark_bar(opacity=0.6, color='#4C78A8', width=80).encode(
+        y=alt.Y('sum(total_sessions):Q',
+                axis=alt.Axis(title="Total sessions (Volume)", titleColor="#4C78A8")
+                
+            )
+    )
+
+    # 4. Create the Line Chart for Median Speed (Right Y-Axis)
+    # We set zero=False so the drop in speed looks more pronounced (from 83 down to 43)
+    line = base.mark_line(color='#E45756', strokeWidth=4).encode(
+        y=alt.Y('mean(median_loss_pct):Q',
+            axis=alt.Axis(title="Median packet loss (%)", titleColor="#E45756"),
+            ) 
+    )
+
+    points = base.mark_point(color='#E45756', size=150, filled=True).encode(
+        y=alt.Y('mean(median_loss_pct):Q')
+    )
+
+    # 6. Combine all elements and resolve scales to create the Dual-Axis
+    staircase_chart = alt.layer(
+        bars,
+        line + points
+    ).resolve_scale(
+        y='independent' # CRITICAL: This allows the right axis to scale differently from the left
+    ).properties(
+        title='The Frustration Staircase: Network Speed vs. Testing Frequency',
+        width=600,
+        height=400
+    ).configure_title(
+        fontSize=18,
+        anchor='start'
+    ).configure_axis(
+        labelFontSize=12,
+        titleFontSize=14
+    )
+
+    return staircase_chart
+
+def get_retention(df):
+
+    base = alt.Chart(df).encode(
+        alt.Theta("sum(total_sessions):Q").stack(True),
+        alt.Color("user_type:N").legend(None),
+        
+    )
+
+    pie = base.mark_arc(innerRadius=50, outerRadius=120)
+    text = base.mark_text(radius=190, size=15).encode(text="user_type:N")
+
+    chart = (pie + text).properties(
+        title='User retention',
+        width=700,
+        height=700
+    )
+
+    return chart 

@@ -1,8 +1,16 @@
 import logging
 from session import create_spark_session
 from config import Config
-from transformations.silver import clean_bronze_data
-from transformations.gold import create_sessionization, create_regional_metrics
+from transformations.silver import (
+    clean_bronze_data,
+    create_user_sessions
+)
+# Assuming you place the two new functions in transformations.gold
+from transformations.gold import (
+    create_regional_metrics,
+    create_gold_retention,
+    create_gold_staircase
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,7 +31,7 @@ def main():
         bronze_df = spark.read.option("mergeSchema", "true").parquet(input_path)
 
         # ---------------------------------------------------------
-        # 2. TRANSFORM & WRITE SILVER
+        # 2. TRANSFORM & WRITE SILVER (Base Measurements)
         # ---------------------------------------------------------
         silver_df = clean_bronze_data(bronze_df)
         
@@ -42,28 +50,31 @@ def main():
         logger.info(f"Silver table written to {silver_table}")
 
         # ---------------------------------------------------------
-        # 3. TRANSFORM & WRITE GOLD (Sessionization)
+        # 3. TRANSFORM & WRITE SILVER (Enriched Sessions)
         # ---------------------------------------------------------
-        # Pass the in-memory silver_df directly to avoid re-reading from BQ
-        gold_sessions_df = create_sessionization(silver_df)
+        silver_sessions_df = create_user_sessions(silver_df)
         
-        gold_table = f"{Config.BQ_DATASET}.gold_sessionization"
+        silver_sessions_table = f"{Config.BQ_DATASET}.silver_user_sessions"
         
-        gold_sessions_df.write.format("bigquery") \
-            .option("writeMethod", "direct") \
-            .option("table", gold_table) \
+        silver_sessions_df.write.format("bigquery") \
+            .option("writeMethod", "indirect") \
+            .option("temporaryGcsBucket", Config.GCS_BUCKET) \
+            .option("table", silver_sessions_table) \
+            .option("partitionField", "session_date") \
+            .option("partitionType", "DAY") \
+            .option("clusteredFields", "user_id,behavior_bucket") \
             .mode("overwrite") \
             .save()
 
-        logger.info(f"Gold session table written to {gold_table}")
+        logger.info(f"Silver Enriched Sessions table written to {silver_sessions_table}")
 
         # ---------------------------------------------------------
-        # 4. TRANSFORM & WRITE GOLD (Regional Metrics)
+        # 4. TRANSFORM & WRITE GOLD (Aggregated Metrics & Dashboards)
         # ---------------------------------------------------------
+        
+        # 4a. Existing Regional Metrics
         gold_regional_df = create_regional_metrics(silver_df)
-        
         regional_table = f"{Config.BQ_DATASET}.gold_regional_metrics"
-        
         gold_regional_df.write.format("bigquery") \
             .option("writeMethod", "direct") \
             .option("table", regional_table) \
@@ -71,6 +82,28 @@ def main():
             .save()
             
         logger.info(f"Gold regional table written to {regional_table}")
+
+        # 4b. Gold: User Retention (For the Pie Chart)
+        gold_retention_df = create_gold_retention(silver_sessions_df)
+        retention_table = f"{Config.BQ_DATASET}.gold_user_retention"
+        gold_retention_df.write.format("bigquery") \
+            .option("writeMethod", "direct") \
+            .option("table", retention_table) \
+            .mode("overwrite") \
+            .save()
+            
+        logger.info(f"Gold User Retention table written to {retention_table}")
+
+        # 4c. Gold: Frustration Staircase (For the Twin Plot)
+        gold_staircase_df = create_gold_staircase(silver_sessions_df)
+        staircase_table = f"{Config.BQ_DATASET}.gold_frustration_staircase"
+        gold_staircase_df.write.format("bigquery") \
+            .option("writeMethod", "direct") \
+            .option("table", staircase_table) \
+            .mode("overwrite") \
+            .save()
+            
+        logger.info(f"Gold Frustration Staircase table written to {staircase_table}")
 
     except Exception as e:
         logger.error(f"Job failed: {e}", exc_info=True)

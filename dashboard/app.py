@@ -1,5 +1,9 @@
 import streamlit as st
-from data import get_regional_metrics, get_sessionization, get_silver
+from data import (
+    get_regional_metrics,
+    get_user_retention,
+    get_frustration_staircase
+)
 import figures
 import pandas as pd
 
@@ -8,10 +12,9 @@ st.set_page_config(layout="wide")
 st.title("Greek Internet Analytics  :material/android_wifi_4_bar: ")
 
 with st.spinner("Fetching data from BigQuery..."):
-    df_sessionization = get_sessionization()
     df_region = get_regional_metrics()
-    df_region["measurement_date"] = pd.to_datetime(df_region["measurement_date"])
-    df_region = df_region.sort_values("measurement_date")
+    df_user_retention = get_user_retention()
+    df_frustration_staircase= get_frustration_staircase()
 
 col1a, col1b = st.columns([0.15, 0.85])
 
@@ -51,6 +54,22 @@ with col1a:
             else df_region
         )
 
+        subset_df_frustration_staircase = (
+            df_frustration_staircase[
+                (df_frustration_staircase["session_date"].dt.year.isin(selected_years))
+            ]
+            if selected_region
+            else df_frustration_staircase
+        )
+
+        subset_df_user_retention = (
+            df_user_retention[
+                (df_user_retention["session_date"].dt.year.isin(selected_years))
+            ]
+            if selected_region
+            else df_user_retention
+        )
+
     with st.container(border=True, height="stretch", vertical_alignment="center"):
         st.metric(
             "Average downstream speed",
@@ -78,25 +97,34 @@ with col1b:
 col2a, col2b = st.columns([0.5, 0.5], border=True)
 
 with col2a:
-    chart = figures.get_marks(subset_df)
+    chart = figures.get_up_vs_down(subset_df)
     st.altair_chart(chart, width="stretch")
 
 with col2b:
     chart = figures.get_tests(subset_df)
     st.altair_chart(chart, width="stretch")
 
+col3a, col3b, col3c = st.columns([0.33, 0.33, 0.33], border=True)
+
+with col3a:
+    chart = figures.get_altair_correlation_chart(subset_df)
+    st.altair_chart(chart, width="stretch")
+
+with col3b:
+    chart = figures.get_up_vs_down(subset_df)
+    st.altair_chart(chart, width="stretch")
 
 """
 ## User Behavioral Analytics 
 A session is defined as............................................
 """
 
-col3a, col3b = st.columns([0.5, 0.5], border=True)
+col4a, col4b = st.columns([0.5, 0.5], border=True)
 
-with col3a:
-    chart = figures.get_hist_chart(df_sessionization)
+with col4a:
+    chart = figures.get_staircase(subset_df_frustration_staircase)
     st.altair_chart(chart, width="stretch")
 
-with col3b:
-    chart = figures.get_hist_chart2(df_sessionization)
-    st.altair_chart(chart, width="stretch")
+with col4b:
+    chart = figures.get_retention(subset_df_user_retention)
+    st.altair_chart(chart, width="stretch", height="stretch")

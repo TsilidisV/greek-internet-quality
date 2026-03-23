@@ -4,7 +4,7 @@
 
 # Fetch the existing repository
 data "github_repository" "repo" {
-  full_name = var.github_repo_full_name # e.g., "your-username/your-repo-name"
+  full_name = var.github_repo_full_name
 }
 
 # --------------------------------------------------------------------------------
