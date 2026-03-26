@@ -18,14 +18,14 @@
 All commands need to be executed in Bash. If you're on Windows, [git bash](https://git-scm.com/install/) is recommended.
 
 ### Infrastructure
-Edit `infrastructure/variables.tf` with your desired project ID (the project needs to already exist), bucket name, dataset name, etc.
+Edit `infrastructure/variables.tf` with your desired project ID (the project needs to already exist), bucket name, dataset name, Github repo etc.
 
 ```bash
 make infra-up
 ```
 Logs you in to Google Cloud CLI and builds the infrastructure.
 
-You might get the error: "Error waiting for Creating Job: Error code 5, message: Image 'mirror.gcr.io/<your_docker_image>' not found.", but don't worry, since we haven't pushed the image to dockerhub yet. Nevertheless, the job has been created.
+You might get the error: "Error waiting for Creating Job: Error code 5, message: Image 'mirror.gcr.io/<your_docker_image>' not found.", but don't worry, we haven't pushed the image to dockerhub yet. Nevertheless, the job has been created.
 
 ### Ingest
 
@@ -83,5 +83,10 @@ Then, the dashboard opens, by running
 ```bash
 uv run --directory dashboard streamlit run app.py
 ```
+
+```bash
+d2 --theme=200 --layout=elk ./docs/architecture.d2
+```
+
 
 ![GCP Medallion Architecture](./docs/architecture.svg)

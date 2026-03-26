@@ -1,5 +1,6 @@
-import pandas as pd
 import altair as alt
+import pandas as pd
+import re
 alt.data_transformers.enable("vegafusion")
 
 
@@ -335,67 +336,91 @@ def get_up_vs_down(df):
     return final_chart
 
 
-def get_altair_correlation_chart(df, columns=None):
+def get_correlation_chart(df, columns=None):
     """
     Takes a pandas DataFrame and a list of numeric columns, 
     and returns an Altair correlation heatmap chart.
     """
-    # Auto-select numeric columns if none are explicitly provided
     if columns is None:
-        columns = df.select_dtypes(include=['number']).columns.tolist()
-        # Drop meaningless identifier columns if present
-        if 'Unnamed: 0' in columns:
-            columns.remove('Unnamed: 0')
-            
-    # Step 1: Calculate the correlation matrix
-    corr_matrix = df[columns].corr().reset_index()
+        columns = [
+            'avg_downstream_mbps',
+            'avg_upstream_mbps',
+            'avg_rtt_msec',
+            'avg_loss_percentage',
+            'avg_jitter_msec',
+            'total_tests'
+        ]
+
+    # Clean labels in Python
+    def clean_label(label):
+        s = label.replace('_', ' ')
+        s = re.sub(r'\b(avg|mbps|msec|percentage|total)\b', '', s, flags=re.IGNORECASE)
+        return ' '.join(s.split()).capitalize()
+
+    # Create an ordered list of the cleaned column names
+    ordered_clean_columns = [clean_label(col) for col in columns]
+
+    # Calculate correlation and rename columns/index immediately
+    corr_matrix = df[columns].corr().rename(index=clean_label, columns=clean_label).reset_index()
     
-    # Step 2: Melt the dataframe into a long format required by Altair
+    # Melt the dataframe
     corr_melted = corr_matrix.melt(
         id_vars='index', 
         var_name='Variable 2', 
         value_name='Correlation'
-    )
-    corr_melted.rename(columns={'index': 'Variable 1'}, inplace=True)
+    ).rename(columns={'index': 'Variable 1'})
     
-    # Step 3: Create the base chart
+    # Define chart size so we can match the legend height to it
+    CHART_SIZE = 600
+
+    # Base chart
     base = alt.Chart(corr_melted).encode(
-        x=alt.X('Variable 1:O', title=''),
-        y=alt.Y('Variable 2:O', title='')
+        x=alt.X('Variable 1:O', title='', sort=ordered_clean_columns),
+        y=alt.Y('Variable 2:O', title='', sort=ordered_clean_columns)
     )
     
-    # Step 4: Create the heatmap rectangles
+    # Rectangles with Viridis and Customized Legend
     rects = base.mark_rect().encode(
         color=alt.Color(
             'Correlation:Q', 
             scale=alt.Scale(scheme='redblue', domain=[-1, 1]),
-            legend=alt.Legend(title="Pearson Corr")
-        )
+            legend=alt.Legend(
+                title="Pearson correlation",
+                gradientLength=CHART_SIZE*0.78,  # Matches the height of the figure
+                titleOrient='right',        # Places title to the right, auto-rotates it
+                titleAlign='center',
+                titleBaseline='middle',
+                titleFontSize=14,
+                titlePadding=15
+            )
+        ),
+        tooltip=[
+            alt.Tooltip('Variable 1:O', title='Metric 1'),
+            alt.Tooltip('Variable 2:O', title='Metric 2'),
+            alt.Tooltip('Correlation:Q', format='.2f')
+        ]
     )
     
-    # Step 5: Add text annotations (the actual correlation values)
+    # Text annotations
     text = base.mark_text(baseline='middle', size=12).encode(
         text=alt.Text('Correlation:Q', format='.2f'),
         color=alt.condition(
-            # Use white text for dark backgrounds (high correlation) and black for light backgrounds
-            abs(alt.datum.Correlation) > 0.5,
+            alt.datum.Correlation > 0.8, 
             alt.value('white'),
             alt.value('black')
         )
+
     )
     
-    # Step 6: Combine the layers and configure properties
+    # Combine and configure
     chart = (rects + text).properties(
-        title='Correlation Matrix Heatmap',
-        width=500,
-        height=500
+        title='Correlation matrix',
+        width=CHART_SIZE,
+        height=CHART_SIZE
     ).configure_axis(
         labelFontSize=12,
         titleFontSize=14,
-        labelAngle=-45  # Angle labels for readability
-    ).configure_title(
-        fontSize=18,
-        anchor='middle'
+        labelAngle=-45
     )
     
     return chart
@@ -437,7 +462,7 @@ def get_staircase(df):
     ).properties(
         title='The Frustration Staircase: Network Speed vs. Testing Frequency',
         width=600,
-        height=400
+        height=600
     ).configure_title(
         fontSize=18,
         anchor='start'
@@ -462,7 +487,96 @@ def get_retention(df):
     chart = (pie + text).properties(
         title='User retention',
         width=700,
-        height=700
+        height=600
     )
 
     return chart 
+
+def get_up_vs_down_marginal(df):
+    scatter_width = 800
+    scatter_height = 400
+
+    x_domain = [0, 900]
+    y_domain = [0, 1100]
+
+    brush = alt.selection_interval(encodings=['x', 'y'])
+    
+    highlight = alt.selection_point(
+        fields=["connection_periphery"], 
+        bind="legend",
+        on="click",
+        empty=True 
+    )
+
+    base = alt.Chart(df)
+
+    # --- SCATTER PLOT ---
+    points = base.mark_circle().encode(
+        alt.X('avg_upstream_mbps:Q', scale=alt.Scale(domain=x_domain), title='Upstream (MB/s)'),
+        alt.Y('avg_downstream_mbps:Q', scale=alt.Scale(domain=y_domain), title='Downstream (MB/s)'),
+        color=alt.condition(
+            brush & highlight, 
+            "connection_periphery:N", 
+            alt.value('lightgray'), 
+            legend=alt.Legend(
+                title="Peripheries",
+                orient="none",       # Removes legend from the default document flow
+                legendX=scatter_width+20,         # Pushes it to the right, into the spacer's column
+                legendY=-40,         # Pushes it up, into the spacer's row
+                direction="vertical" # Stacks the items so they fit the corner
+            ),
+            scale=alt.Scale(scheme="tableau10")
+        ),
+        opacity=alt.condition(
+            highlight, 
+            alt.value(0.8), 
+            alt.value(0.05)   
+        ),
+    ).add_params(
+        brush, highlight
+    ).properties(
+        width=scatter_width,  
+        height=scatter_height  
+    )
+
+    # --- TOP DENSITY ---
+    top_hist = base.transform_filter(brush).transform_filter(highlight).transform_density(
+        density='avg_upstream_mbps', groupby=['connection_periphery'], extent=x_domain, counts=True, steps=250
+    ).mark_area(opacity=0.7).encode(
+        alt.X('value:Q', scale=alt.Scale(domain=x_domain), title='', axis=alt.Axis(labels=False, ticks=False)), 
+        alt.Y('density:Q', stack='zero', title=''),
+        alt.Color('connection_periphery:N'),
+    ).properties(width=scatter_width, height=80, title='Marginal density: Upstream vs downstream')
+
+    # --- RIGHT DENSITY ---
+    right_hist = base.transform_filter(brush).transform_filter(highlight).transform_density(
+        density='avg_downstream_mbps', groupby=['connection_periphery'], extent=y_domain, counts=True, steps=250
+    ).mark_area(opacity=0.7, orient='horizontal').encode(
+        alt.Y('value:Q', scale=alt.Scale(domain=y_domain), title='', axis=alt.Axis(labels=False, ticks=False)), 
+        alt.X('density:Q', stack='zero', title=''),
+        alt.Color('connection_periphery:N'),
+    ).properties(width=100, height=scatter_height)
+
+    # --- INVISIBLE SPACER ---
+    # We keep this as the structural scaffolding for our 2x2 grid
+    spacer = base.mark_point(opacity=0).properties(width=100, height=80)
+
+    # --- Create the x=y Reference Line ---
+    # Find the global max to know how far to draw the diagonal line
+    #max_val = max(df['avg_upstream_mbps'].max(), df['avg_downstream_mbps'].max())
+    max_val = 900
+
+    # Create a simple dataframe with start (0) and end (max_val) points
+    line_df = pd.DataFrame({'ref_val': [0, max_val]})
+    
+    # Plot the line mapping both X and Y to the same value
+    identity_line = alt.Chart(line_df).mark_line(
+        color='gray', 
+        strokeDash=[5, 5], # Makes the line dashed
+        opacity=0.7
+    ).encode(
+        x='ref_val:Q',
+        y='ref_val:Q'
+    )
+
+    return (top_hist | spacer) & ( (points + identity_line) | right_hist)

@@ -94,32 +94,30 @@ with col1b:
         chart = figures.get_line(subset_df, case=selection)
         st.altair_chart(chart, width="stretch")
 
-col2a, col2b = st.columns([0.5, 0.5], border=True)
-
-with col2a:
-    chart = figures.get_up_vs_down(subset_df)
-    st.altair_chart(chart, width="stretch")
-
-with col2b:
+with st.container(border=True, height="stretch", vertical_alignment="center"):
     chart = figures.get_tests(subset_df)
     st.altair_chart(chart, width="stretch")
 
-col3a, col3b, col3c = st.columns([0.33, 0.33, 0.33], border=True)
+col3a, col3b = st.columns([0.4, 0.6], border=True)
 
 with col3a:
-    chart = figures.get_altair_correlation_chart(subset_df)
+    chart = figures.get_correlation_chart(subset_df)
     st.altair_chart(chart, width="stretch")
 
 with col3b:
-    chart = figures.get_up_vs_down(subset_df)
+    chart = figures.get_up_vs_down_marginal(subset_df)
     st.altair_chart(chart, width="stretch")
 
 """
-## User Behavioral Analytics 
-A session is defined as............................................
+## User Behavioural Analytics 
+
+- *Session*: A grouping of tests that come from the same IP within a 30-minute window.
+- *Users*:
+    - *Returning*: A user whose IP address has been logged again within a 14 day window
+    - *New/Transient*: Either a completely new user or a user who hasn't performed a test within a 14 day window.
 """
 
-col4a, col4b = st.columns([0.5, 0.5], border=True)
+col4a, col4b = st.columns([0.7, 0.3], border=True)
 
 with col4a:
     chart = figures.get_staircase(subset_df_frustration_staircase)
@@ -127,4 +125,4 @@ with col4a:
 
 with col4b:
     chart = figures.get_retention(subset_df_user_retention)
-    st.altair_chart(chart, width="stretch", height="stretch")
+    st.altair_chart(chart, width="stretch")
