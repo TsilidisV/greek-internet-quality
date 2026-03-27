@@ -460,7 +460,7 @@ def get_staircase(df):
     ).resolve_scale(
         y='independent' # CRITICAL: This allows the right axis to scale differently from the left
     ).properties(
-        title='The Frustration Staircase: Network Speed vs. Testing Frequency',
+        title='The frustration staircase: Testing frequency vs. network quality',
         width=600,
         height=600
     ).configure_title(
