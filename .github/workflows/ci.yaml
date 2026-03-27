@@ -1,0 +1,39 @@
+name: Tests
+
+# Run on pushes and PRs to the main branch
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Run Pytest
+    runs-on: ubuntu-latest
+    
+    # This tells GitHub to run all 'run' commands inside your ingest folder
+    defaults:
+      run:
+        working-directory: ./ingest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # The official action from Astral to install uv fast and enable caching
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "ingest/uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "ingest/pyproject.toml"
+
+
+      - name: Run tests
+        # Runs pytest inside the uv environment
+        run: uv run pytest
