@@ -24,7 +24,7 @@
   <a href="https://docs.github.com/en/actions/"><img height="42" src="https://cdn.simpleicons.org/githubactions/2088FF" /></a>
   <a href="https://cloud.google.com/storage/"><img height="42" src="https://cdn.simpleicons.org/googlecloudstorage/AECBFA" /></a>
   <a href="https://cloud.google.com/bigquery/"><img height="42" src="https://cdn.simpleicons.org/googlebigquery/669DF6" /></a>
-  <a href="https://cloud.google.com/run/"><img  src="https://api.iconify.design/devicon:cloudrun.svg?height=52" /></a>
+  <a href="https://cloud.google.com/run/"><img  src="https://api.iconify.design/devicon:cloudrun.svg?height=42" /></a>
   <a href="https://docker.com/"><img height="42" src="https://cdn.simpleicons.org/docker/2496ED" /></a>
   <a href="https://spark.apache.org/docs/latest/api/python/index.html"><img height="42" src="https://cdn.simpleicons.org/apachespark/E25A1C" /></a>
   <a href="https://streamlit.io/"><img height="42" src="https://cdn.simpleicons.org/streamlit/FF4B4B" /></a>
