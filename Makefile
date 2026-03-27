@@ -1,12 +1,10 @@
-.PHONY: blach infra-up docker-run gen-env docker-run image-push generate-env create-dashboard-key
- 
-
-ENV_FILE := transform/.env
-username := vtsilidis
+.PHONY: infra-up create-ingestor-key create-transformer-key create-dashboard-key docker-run image-push generate-env clean-env 
 
 INGEST_DIR := ingest
 TRANSFORM_DIR := transform
 DASHBOARD_DIR := dashboard
+INFRA_DIR := infrastructure
+
 INGEST_KEY_NAME := ingestor-gcp-key.json
 TRANSFORM_KEY_NAME := transform-gcp-key.json
 DASHBOARD_KEY_NAME := dashboard-gcp-key.json
@@ -14,20 +12,18 @@ DASHBOARD_TOML_NAME := secrets.toml
 
 INGEST_SECRET_DIR_ABS := $(INGEST_DIR)/.secrets
 TRANSFORM_SECRET_DIR_ABS := $(TRANSFORM_DIR)/.secrets
+DASHBOARD_SECRET_DIR_ABS := $(DASHBOARD_DIR)/.streamlit
+
 INGESTOR_ENV_FILE := $(INGEST_DIR)/.env
 TRANSFORM_ENV_FILE := $(TRANSFORM_DIR)/.env
-DASHBOARD_SECRET_DIR_ABS := $(DASHBOARD_DIR)/.streamlit
 
 INGESTOR_KEY_FILE := $(INGEST_SECRET_DIR_ABS)/$(INGEST_KEY_NAME)
 TRANSFORM_KEY_FILE := $(TRANSFORM_SECRET_DIR_ABS)/$(TRANSFORM_KEY_NAME)
 DASHBOARD_KEY_FILE := $(DASHBOARD_SECRET_DIR_ABS)/$(DASHBOARD_KEY_NAME)
 DASHBOARD_TOML_FILE := $(DASHBOARD_SECRET_DIR_ABS)/$(DASHBOARD_TOML_NAME)
+
 INGESTOR_KEY_FILE_REL := ./.secrets/$(INGEST_KEY_NAME)
 TRANSFORM_KEY_FILE_REL := ./.secrets/$(TRANSFORM_KEY_NAME)
-DASHBOARD_KEY_FILE_REL := ./.secrets/$(DASHBOARD_KEY_NAME)
-DASHBOARD_TOML_FILE_REL := ./.secrets/$(DASHBOARD_TOML_NAME)
-
-INFRA_DIR := infrastructure
 
 infra-up:
 	gcloud auth login 
@@ -119,24 +115,3 @@ image-push:
 	docker login && \
 	docker build -t $(DOCKER_IMAGE) . && \
 	docker push $(DOCKER_IMAGE) 
-
-
-
-
-
-
-
-
-generate-env:
-	@echo "Extracting Terraform outputs to $(ENV_FILE)..."
-	@mkdir -p $(dir $(ENV_FILE))
-	@terraform -chdir=infrastructure output -json | jq -r 'to_entries | .[] | "\(.key)=\(.value.value)"' > $(ENV_FILE)
-	@echo "Done! $(ENV_FILE) has been updated."
-
-.PHONY: clean-env
-clean-env:
-	@rm -f $(ENV_FILE)
-	@echo "Removed $(ENV_FILE)"
-
-
-

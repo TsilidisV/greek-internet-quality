@@ -56,6 +56,14 @@ def process_raw_data(data: list) -> pd.DataFrame:
     })
 
     df['measurement_time'] = pd.to_datetime(df['measurement_time'])
+    # Apply the Europe/Athens timezone
+    if df['measurement_time'].dt.tz is None:
+        # If the API string lacks an offset (naive), just stamp it as Athens time
+        df['measurement_time'] = df['measurement_time'].dt.tz_localize('Europe/Athens')
+    else:
+        # If the API string includes an offset (e.g., +02:00), standardize it to the named tz
+        df['measurement_time'] = df['measurement_time'].dt.tz_convert('Europe/Athens')
+
     df["ingested_at"] = datetime.now(timezone.utc)
 
     return df
