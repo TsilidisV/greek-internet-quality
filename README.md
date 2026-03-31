@@ -39,7 +39,7 @@
 </p>
 
 
-https://github.com/user-attachments/assets/5b83d3da-f860-4c56-b4a0-42c557da9682
+https://github.com/user-attachments/assets/a3d29536-0fdd-404a-90c2-1dd28255960f
 
 
 ## 📐 Architecture
