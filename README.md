@@ -38,6 +38,10 @@
   <a href="#-getting-started">Getting Started</a> 
 </p>
 
+
+https://github.com/user-attachments/assets/5b83d3da-f860-4c56-b4a0-42c557da9682
+
+
 ## 📐 Architecture
 
 At its core, this project implements an event-driven, serverless **Medallion Data Lakehouse** on Google Cloud Platform, fully provisioned via **Terraform**. The pipeline is orchestrated by **GitHub Actions**, which first triggers a Python ingestor script which transforms JSON payloads into parquet files (enforcing a schema-on-write approach) and saving them to a **Google Cloud Storage** bucket (the Bronze layer). Upon successful ingestion, a containerized **PySpark** job spins up on demand via **Google Cloud Run** (triggered by Github Actions) to process the data into **BigQuery**. Here, the data is progressively refined from cleaned, partitioned and clustered tables (Silver layer) into highly aggregated business metrics (Gold layer). The final analytics are queried directly from the Gold tables by a **Streamlit** dashboard, ensuring users only interact with strictly validated data.
