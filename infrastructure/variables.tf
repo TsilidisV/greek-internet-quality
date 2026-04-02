@@ -41,7 +41,7 @@ variable "job_name" {
 variable "github_repo_full_name" {
   description = "Github repository name"
   type        = string
-  default     = "TsilidisV/greece-internet-quality"
+  default     = "TsilidisV/greek-internet-quality"
 }
 
 variable "github_token" {

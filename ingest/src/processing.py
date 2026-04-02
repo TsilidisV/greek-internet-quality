@@ -58,8 +58,25 @@ def process_raw_data(data: list) -> pd.DataFrame:
     df['measurement_time'] = pd.to_datetime(df['measurement_time'])
     # Apply the Europe/Athens timezone
     if df['measurement_time'].dt.tz is None:
+        # --- Timezone Localization Logic ---
         # If the API string lacks an offset (naive), just stamp it as Athens time
-        df['measurement_time'] = df['measurement_time'].dt.tz_localize('Europe/Athens')
+
+        # We use 'nonexistent' and 'ambiguous' to handle Daylight Saving Time (DST) transitions:
+        # 
+        # 1. nonexistent='shift_forward': Handles the "Spring Forward" gap (e.g., late March).
+        #    Local times that fall within the skipped hour (3:00-3:59 AM) are shifted 
+        #    forward to the valid 4:00 AM hour to prevent ValueErrors.
+        # 
+        # 2. ambiguous='infer': Handles the "Fall Back" overlap (e.g., late October).
+        #    When clocks roll back, the same hour repeats. 'infer' uses the chronological
+        #    order of the data to correctly assign the first occurrence to DST 
+        #    and the second to Standard Time.
+        # ------------------------------------
+        df['measurement_time'] = df['measurement_time'].dt.tz_localize(
+            'Europe/Athens', 
+            nonexistent='shift_forward', 
+            ambiguous='infer' 
+        )
     else:
         # If the API string includes an offset (e.g., +02:00), standardize it to the named tz
         df['measurement_time'] = df['measurement_time'].dt.tz_convert('Europe/Athens')
